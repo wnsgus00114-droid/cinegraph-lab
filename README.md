@@ -1,57 +1,135 @@
-# CineGraph Lab — novelty-aware multi-model movie recommender
+# 씨네그래프 랩(CineGraph Lab)
 
-CineGraph Lab is an end-to-end MLOps recommendation application. A user selects movies in Streamlit; Streamlit sends JSON to FastAPI; FastAPI runs one of four research-inspired retrieval engines and a diversity/novelty re-ranker; the result returns to the UI. Recommendation logic is deliberately absent from the frontend.
+> 최신 추천 연구 아이디어와 MLOps를 결합한 새로움·다양성 기반 영화 추천 서비스
 
-## Novelty and differentiators
+- **배포 웹사이트:** <http://18.205.104.199:8501>
+- **FastAPI 문서:** <http://18.205.104.199:8000/docs>
 
-- **Four selectable engines:** LightGCN-inspired graph propagation, SASRec-inspired ordered preference encoding, collaborative/content Two-Tower retrieval, and gated Fusion.
-- **Novelty-aware recommendation:** a controllable long-tail score reduces popularity bias.
-- **Diversity-aware slate:** Maximal Marginal Relevance avoids ten nearly identical results.
-- **Explainability:** each result states genre affinity or cross-genre discovery and long-tail status.
-- **MLOps:** API health/readiness, Docker Compose, Kubernetes manifests, resource limits, GitHub Actions tests, request trace IDs, and reproducible public-data ingestion.
-- **Pub/Sub notifications:** Streamlit email subscription and recommendation publishing through an AWS SNS Topic, with a credential-free demo mode.
+씨네그래프 랩은 Streamlit, FastAPI, Docker, Kubernetes, AWS EC2, AWS SNS를 하나의 흐름으로 연결한 영화 추천 MLOps 프로젝트입니다. 사용자가 재미있게 본 영화를 선택하면 Streamlit이 FastAPI에 HTTP 요청을 보내고, FastAPI가 추천 엔진을 실행해 JSON 결과를 반환합니다.
 
-> This is a compact educational implementation of the cited architectural ideas, optimized for CPU demo deployment. It does not claim to reproduce the papers' benchmark results or full training protocols.
+프론트엔드에서 추천을 직접 계산하지 않으며, 모든 추천 결과는 별도 FastAPI 컨테이너에서 생성됩니다.
 
-## Architecture
+## 핵심 기능
+
+- 영화 검색 및 다중 선택을 통한 개인 선호 입력
+- Streamlit과 FastAPI 사이의 실제 HTTP/JSON 통신
+- LightGCN, SASRec, Two-Tower, Fusion 총 4개 추천 엔진 비교
+- 인기작 위주 편향을 줄이는 새로움(novelty) 조절
+- 비슷한 장르의 반복을 줄이는 MMR 다양성 재정렬
+- 장르 일치, 새로운 장르 발견, 숨은 작품 여부를 표시하는 추천 이유
+- AWS SNS Pub/Sub 기반 이메일 구독 및 추천 알림 발행
+- Docker Compose 기반 프론트엔드·백엔드 분리 배포
+- Kubernetes Deployment, Service, 준비 상태 검사, 자원 제한
+- GitHub Actions 기반 데이터 준비, API 통합 테스트, Compose 구성 검증
+- API 응답 시간과 요청 추적 ID를 이용한 관찰 가능성
+
+## 차별성과 새로운 점
+
+일반적인 인기순 또는 단순 장르 필터 방식을 넘어, 서로 다른 추천 신호를 하나의 서비스에서 비교할 수 있게 구성했습니다. 사용자는 다양성과 새로움을 직접 조절할 수 있으며, 이를 통해 가장 인기 있는 영화만 반복 노출되는 편향을 완화합니다.
+
+추천 결과는 AWS SNS Topic에 메시지로 발행되며, SNS가 확인된 이메일 구독자 전체에게 알림을 팬아웃합니다. 추천 기능을 단순 웹 페이지에 머물게 하지 않고 이벤트 기반 메시징으로 확장했습니다.
+
+> 본 구현은 아래 인용한 연구의 핵심 구조를 CPU 데모 환경에 맞게 경량화한 교육용 구현입니다. 각 논문의 전체 학습 절차나 벤치마크 성능을 동일하게 재현했다고 주장하지 않습니다.
+
+## 전체 구조
 
 ```text
-Browser :8501 → Streamlit ─POST /recommend→ FastAPI :8000 → 4 retrieval engines
-                                             ↓
-                                novelty + MMR re-ranking
-                                             ↓ JSON + trace ID
+사용자 브라우저 :8501
+          │
+          ▼
+     Streamlit UI
+          │  POST /recommend (JSON)
+          ▼
+      FastAPI :8000
+          │
+          ├─ LightGCN 기반 그래프 탐색
+          ├─ SASRec 기반 시퀀스 표현
+          ├─ Two-Tower 협업·장르 탐색
+          └─ Fusion 앙상블
+                    │
+                    ▼
+          새로움 점수 + MMR 다양성 재정렬
+                    │
+                    ├─ JSON 응답 → Streamlit 결과 표시
+                    └─ AWS SNS Topic → 이메일 구독자
 ```
 
-## Data provenance
+## 폴더 구조
 
-| Dataset | Provider | Contents | License / usage |
-|---|---|---|---|
-| MovieLens latest-small | GroupLens Research, University of Minnesota | about 100k ratings, 9k movies, 600 users; ratings + timestamps + genres | Research dataset; follow the README bundled by GroupLens |
+```text
+.
+├─ front/                  # Streamlit 프론트엔드와 Dockerfile
+├─ back/app/               # FastAPI, 추천 엔진, SNS 알림
+├─ k8s/                   # Kubernetes 매니페스트
+├─ scripts/               # 데이터 다운로드와 EC2 배포
+├─ tests/                 # API 통합 테스트
+├─ .github/workflows/     # GitHub Actions CI
+├─ docker-compose.yml
+└─ Makefile
+```
 
-The dataset is downloaded directly from `https://files.grouplens.org/datasets/movielens/ml-latest-small.zip` by `scripts/download_data.sh`. Raw data is intentionally not committed, keeping the repository small and provenance reproducible. See the [official dataset page](https://grouplens.org/datasets/movielens/latest/).
+## 데이터 출처
 
-## Run locally with Docker
+| 항목 | 내용 |
+|---|---|
+| 데이터셋 | MovieLens latest-small |
+| 제공 기관 | 미네소타 대학 GroupLens Research |
+| 주요 내용 | 약 10만 개 평점, 9천 개 영화, 600명 사용자, 타임스탬프, 장르 |
+| 공식 페이지 | [GroupLens MovieLens](https://grouplens.org/datasets/movielens/latest/) |
+| 다운로드 주소 | `https://files.grouplens.org/datasets/movielens/ml-latest-small.zip` |
 
-Prerequisites: Docker Engine/Desktop, Compose v2, `curl`, and `unzip`.
+`scripts/download_data.sh`가 GroupLens 공식 주소에서 `movies.csv`와 `ratings.csv`를 재현 가능하게 다운로드합니다. 저장소 크기와 저작권·데이터 출처 관리를 위해 원본 CSV는 GitHub에 커밋하지 않습니다.
+
+## 추천 엔진 4종
+
+| 엔진 | 활용 신호 | 특징 |
+|---|---|---|
+| LightGCN | 정규화한 사용자–영화 상호작용 그래프 | 협업적 유사성 탐색 |
+| SASRec | 선택 순서와 영화의 최근성 | 시퀀스에 민감한 탐색 |
+| Two-Tower | 협업 영화 표현과 장르 콘텐츠 표현 | 상호작용과 콘텐츠 정보 결합 |
+| Fusion | 위 세 신호의 가중 앙상블 | 새로움·MMR까지 결합한 기본 추천 엔진 |
+
+사용자가 선택한 영화는 결과에서 제외됩니다. API는 입력 범위와 결과 개수를 검증하고, 응답 시간과 요청별 UUID를 함께 반환합니다. 사용자 이력이 없는 콜드 스타트 상황에서는 선택한 영화의 장르 표현을 활용합니다.
+
+## 로컬 Docker 실행
+
+### 필요 환경
+
+- Docker Engine 또는 Docker Desktop
+- Docker Compose v2
+- `curl`, `unzip`
+
+### 실행
 
 ```bash
 make data
 docker compose up --build
 ```
 
-Open Streamlit at <http://localhost:8501> and FastAPI Swagger at <http://localhost:8000/docs>. Stop with `docker compose down`.
+실행 후 접속 주소:
 
-Quick API proof:
+- Streamlit: <http://localhost:8501>
+- FastAPI Swagger: <http://localhost:8000/docs>
+
+종료:
+
+```bash
+docker compose down
+```
+
+### API 통신 확인
 
 ```bash
 curl http://localhost:8000/health
-curl -X POST http://localhost:8000/recommend -H 'Content-Type: application/json' \
+
+curl -X POST http://localhost:8000/recommend \
+  -H 'Content-Type: application/json' \
   -d '{"liked_movie_ids":[1,260],"model":"fusion","top_k":5,"diversity":0.35,"novelty":0.25}'
 ```
 
-## Kubernetes (local)
+## Kubernetes 로컬 배포
 
-For Docker Desktop Kubernetes, enable Kubernetes, then:
+Docker Desktop에서 Kubernetes를 활성화한 후 실행합니다.
 
 ```bash
 make k8s
@@ -59,22 +137,44 @@ kubectl -n cinegraph get pods,svc
 kubectl -n cinegraph port-forward service/frontend 8501:8501
 ```
 
-With kind/minikube, load the two local images into the cluster before applying manifests. Production deployments should push images to ECR and replace the image names.
+kind 또는 minikube를 사용할 경우 매니페스트를 적용하기 전에 `cinegraph-api`, `cinegraph-front` 이미지를 클러스터에 로드해야 합니다. 운영 환경에서는 ECR에 이미지를 푸시한 후 매니페스트의 이미지 주소를 교체하는 방식이 적합합니다.
 
-## EC2 deployment
+## AWS EC2 배포
 
-Allow inbound TCP **8501** (UI), **8000** (Swagger/demo only), and **22** (SSH, restricted to your IP) in the EC2 security group. Never commit a PEM key.
+보안 그룹 인바운드 규칙:
+
+| 포트 | 용도 | 권장 설정 |
+|---:|---|---|
+| 22 | SSH | 관리자 공인 IP로 제한 |
+| 8501 | Streamlit UI | 데모 시 `0.0.0.0/0` |
+| 8000 | FastAPI Swagger | 데모 시만 공개 |
 
 ```bash
-EC2_HOST=YOUR_PUBLIC_IP EC2_USER=ec2-user EC2_KEY=./your-key.pem bash scripts/deploy_ec2.sh
-ssh -i ./your-key.pem ec2-user@YOUR_PUBLIC_IP 'cd ~/cinegraph && sudo docker compose ps'
+EC2_HOST=YOUR_PUBLIC_IP \
+EC2_USER=ec2-user \
+EC2_KEY=./your-key.pem \
+bash scripts/deploy_ec2.sh
+
+ssh -i ./your-key.pem ec2-user@YOUR_PUBLIC_IP \
+  'cd ~/cinegraph && sudo docker compose ps'
 ```
 
-For a long-lived public service, put TLS-capable Nginx/ALB in front, close port 8000 publicly, use an Elastic IP/domain, and store images in ECR.
+PEM 키는 절대 GitHub에 커밋하지 않습니다. 장기 운영 시에는 Nginx 또는 ALB에서 TLS를 종료하고, 8000번 포트의 외부 공개를 차단하며, Elastic IP·도메인·ECR을 사용하는 구성이 적합합니다.
 
-## AWS SNS email Pub/Sub
+## AWS SNS Pub/Sub 이메일 알림
 
-Create a **Standard** SNS Topic in `us-east-1`, then give the EC2 instance role these least-privilege actions on that Topic: `sns:Subscribe` and `sns:Publish`. Configure its ARN before deployment:
+### 동작 흐름
+
+1. 사용자가 Streamlit 사이드바에 이메일을 입력합니다.
+2. Streamlit이 FastAPI의 `/notifications/subscribe`를 호출합니다.
+3. FastAPI가 SNS Topic에 이메일 엔드포인트 구독을 요청합니다.
+4. AWS가 확인 메일을 발송합니다.
+5. 사용자가 **Confirm subscription**을 누른 후부터 알림이 전달됩니다.
+6. 추천 알림이 SNS Topic에 발행되면 SNS가 모든 확인된 구독자에게 이메일을 전송합니다.
+
+### 설정
+
+`us-east-1`에 Standard SNS Topic을 생성하고 EC2 IAM 역할에 해당 Topic에 대한 `sns:Subscribe`, `sns:Publish` 최소 권한을 부여합니다.
 
 ```bash
 export AWS_REGION=us-east-1
@@ -82,39 +182,58 @@ export SNS_TOPIC_ARN=arn:aws:sns:us-east-1:YOUR_ACCOUNT_ID:cinegraph-recommendat
 docker compose up -d --build
 ```
 
-The Streamlit sidebar submits an email endpoint to FastAPI, which calls SNS `Subscribe`. AWS sends a confirmation email; delivery starts only after the recipient selects **Confirm subscription**. The recommendation publish button sends one message to the Topic and SNS fans it out to every confirmed subscriber. If `SNS_TOPIC_ARN` is absent, the application clearly reports `demo` mode and sends no email. Never place AWS access keys in this repository or Docker image.
+`SNS_TOPIC_ARN`이 없으면 앱은 메일을 발송하지 않는 `demo` 모드로 동작합니다. AWS 액세스 키를 소스 코드, Docker 이미지, GitHub에 저장해서는 안 됩니다.
 
-## Model behavior
-
-| Engine | Signal | Best use |
-|---|---|---|
-| LightGCN | normalized user-item graph and low-rank propagation embedding | collaborative similarity |
-| SASRec | ordered selection weights plus item recency representation | sequence-sensitive exploration |
-| Two-Tower | collaborative item space concatenated with genre content space | retrieval with content awareness |
-| Fusion | weighted agreement of all three, then novelty + MMR | robust default |
-
-Cold-start is handled through movie genre features, but users must choose at least one catalog item. The API validates inputs, caps result count, excludes already-liked items, and emits latency plus a trace ID.
-
-## Tests and repository safety
+## 테스트
 
 ```bash
 make data
-python -m venv .venv && source .venv/bin/activate
+python -m venv .venv
+source .venv/bin/activate
 pip install -r back/requirements.txt httpx pytest
-pytest -q
-git check-ignore -v *.pem '과제안내.md' '유튜브대본.md'
+make test
 ```
 
-Downloaded data, trained artifacts, PEM files, the private assignment sheet, and the private YouTube script are excluded by `.gitignore` and `.dockerignore`.
+통합 테스트는 다음을 확인합니다.
 
-## References
+- FastAPI 헬스체크
+- 추천 요청과 결과 개수
+- SNS 구독 API
+- SNS 메시지 발행 API
+- Docker Compose 구성 유효성
+
+## 저장소 보안
+
+다음 파일은 `.gitignore`로 Git 추적에서 제외합니다.
+
+- `*.pem`, `*.key`: AWS 비밀 키
+- `과제안내.md`: 개인 제출용 과제 문서
+- `유튜브대본.md`: 개인 촬영 대본
+- `data/`: 다운로드한 MovieLens 원본
+- `artifacts/`: 생성된 모델 산출물
+- `.env`: AWS 및 배포 환경 설정
+
+확인 명령:
+
+```bash
+git check-ignore -v *.pem '과제안내.md' '유튜브대본.md' data/movies.csv
+```
+
+## 한계와 개선 방향
+
+- MovieLens 영화 제목과 장르는 원본 데이터에 따라 영문으로 표시됩니다.
+- 실시간 사용자 이력을 영구 저장하지 않으며, 현재 세션의 선택 정보를 기반으로 추천합니다.
+- 실제 대규모 운영 시에는 사전 학습한 임베딩 산출물, 버전 관리, A/B 테스트, 피드백 루프가 필요합니다.
+- 과거 상호작용 데이터에 편향이 포함될 수 있으므로 새로움 조절 기능을 숨기지 않고 사용자에게 공개했습니다.
+
+## 참고 문헌
 
 1. He, X. et al. (2020). [LightGCN: Simplifying and Powering Graph Convolution Network for Recommendation](https://doi.org/10.1145/3397271.3401063), SIGIR.
 2. Kang, W-C. & McAuley, J. (2018). [Self-Attentive Sequential Recommendation](https://doi.org/10.1109/ICDM.2018.00035), ICDM.
-3. Yi, X. et al. (2019). [Sampling-Bias-Corrected Neural Modeling for Large Corpus Item Recommendations](https://research.google/pubs/sampling-bias-corrected-neural-modeling-for-large-corpus-item-recommendations/), RecSys (two-tower retrieval).
+3. Yi, X. et al. (2019). [Sampling-Bias-Corrected Neural Modeling for Large Corpus Item Recommendations](https://research.google/pubs/sampling-bias-corrected-neural-modeling-for-large-corpus-item-recommendations/), RecSys.
 4. Carbonell, J. & Goldstein, J. (1998). [The Use of MMR, Diversity-Based Reranking for Reordering Documents and Producing Summaries](https://doi.org/10.1145/290941.291025), SIGIR.
-5. Harper, F. M. & Konstan, J. A. (2015). [The MovieLens Datasets: History and Context](https://doi.org/10.1145/2827872), ACM TiiS.
+5. Harper, F. M. & Konstan, J. A. (2015). [The MovieLens Datasets: History and Context](https://doi.org/10.1145/2827872), ACM Transactions on Interactive Intelligent Systems.
 
-## License and responsible use
+## 라이선스와 책임 있는 사용
 
-Application source is provided for educational use. MovieLens remains governed by its own terms. Recommendations are experimental; popularity and historical interaction data can encode bias, so the novelty control is visible rather than hidden.
+본 소스 코드는 교육용 프로젝트입니다. MovieLens 데이터셋은 GroupLens의 별도 이용 조건을 따릅니다. 추천 결과는 실험적 결과이며, 인기도와 과거 상호작용에 포함된 편향이 결과에 반영될 수 있습니다.
