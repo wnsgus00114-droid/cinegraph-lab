@@ -12,10 +12,10 @@ from sklearn.preprocessing import normalize
 
 
 MODEL_DESCRIPTIONS = {
-    "lightgcn": "LightGCN-inspired graph propagation over the user-item interaction graph",
-    "sasrec": "SASRec-inspired recency-aware self-attentive sequence representation",
-    "two_tower": "Two-tower retrieval using collaborative item and genre embeddings",
-    "fusion": "Research-inspired gated fusion with novelty-aware MMR re-ranking",
+    "lightgcn": "LightGCN 기반 사용자–영화 상호작용 그래프 탐색",
+    "sasrec": "SASRec 기반 선호 순서와 최근성을 반영한 시퀀스 표현",
+    "two_tower": "협업 필터링과 장르 임베딩을 결합한 Two-Tower 탐색",
+    "fusion": "세 가지 신호와 새로움 기반 MMR 재정렬을 결합한 퓨전 엔진",
 }
 
 
@@ -114,10 +114,9 @@ class Recommender:
         for idx in chosen:
             row = s.movies.iloc[idx]
             overlap = liked_genres.intersection(str(row.genres).split("|")) - {"(no genres listed)"}
-            reason = (f"Shared taste: {', '.join(sorted(overlap)[:2])}" if overlap else "Discovered beyond your usual genres")
+            reason = (f"선호 장르 일치: {', '.join(sorted(overlap)[:2])}" if overlap else "평소 선호 장르를 넘어선 새로운 발견")
             if novelty_score[idx] > .65:
-                reason += " · long-tail novelty pick"
+                reason += " · 잘 알려지지 않은 숨은 작품"
             results.append({"movie_id": int(row.movieId), "title": row.title, "genres": row.genres,
                             "score": round(float(raw[idx]), 4), "reason": reason})
         return results
-

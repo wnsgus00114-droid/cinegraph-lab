@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .recommender import MODEL_DESCRIPTIONS, Recommender
 from .schemas import RecommendRequest, RecommendResponse
 
-app = FastAPI(title="CineGraph Lab API", version="1.0.0")
+app = FastAPI(title="씨네그래프 랩 추천 API", description="MovieLens 기반 다중 모델 영화 추천 서비스", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 engine: Recommender | None = None
 
@@ -42,4 +42,3 @@ def recommend(req: RecommendRequest):
     return RecommendResponse(model=req.model, engine_description=MODEL_DESCRIPTIONS[req.model],
         recommendations=results, latency_ms=round((time.perf_counter()-started)*1000, 2),
         api_trace_id=str(uuid.uuid4()))
-
