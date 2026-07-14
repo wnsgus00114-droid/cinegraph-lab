@@ -1,4 +1,12 @@
 services:
+  trainer:
+    build:
+      context: .
+      dockerfile: back/Dockerfile
+    command: ["python", "scripts/train_mlp.py"]
+    volumes:
+      - ./artifacts:/app/artifacts
+    profiles: ["training"]
   api:
     build:
       context: .

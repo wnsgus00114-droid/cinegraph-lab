@@ -9,6 +9,7 @@ jobs:
         with: {python-version: "3.11"}
       - run: bash scripts/download_data.sh
       - run: pip install -r back/requirements.txt httpx pytest
+      - run: python scripts/train_mlp.py
       - run: python -m pytest -q
         env:
           PYTHONPATH: .

@@ -7,6 +7,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import joblib
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import normalize
 
@@ -16,6 +17,7 @@ MODEL_DESCRIPTIONS = {
     "sasrec": "SASRec 기반 선호 순서와 최근성을 반영한 시퀀스 표현",
     "two_tower": "협업 필터링과 장르 임베딩을 결합한 Two-Tower 탐색",
     "fusion": "세 가지 신호와 새로움 기반 MMR 재정렬을 결합한 퓨전 엔진",
+    "mlp": "사용자 선호 프로필과 영화 특징의 비선형 관계를 학습한 MLP 신경망",
 }
 
 
@@ -38,6 +40,14 @@ class Recommender:
         if not (root / "movies.csv").exists():
             root = Path(__file__).resolve().parents[2] / "data"
         self.state = self._load(root)
+        artifact = Path(os.getenv("MLP_MODEL_PATH", "/app/artifacts/mlp_recommender.joblib"))
+        if not artifact.exists():
+            artifact = Path(__file__).resolve().parents[2] / "artifacts" / "mlp_recommender.joblib"
+        self.mlp_bundle = joblib.load(artifact) if artifact.exists() else None
+
+    @property
+    def mlp_loaded(self) -> bool:
+        return self.mlp_bundle is not None
 
     @staticmethod
     def _load(root: Path) -> State:
@@ -87,7 +97,16 @@ class Recommender:
             weights = np.linspace(0.7, 1.0, len(indices))
             profile = np.average(space[indices], axis=0, weights=weights)
             return space @ profile
-        if model == "fusion":
+        if model == "mlp":
+            if self.mlp_bundle is None:
+                raise ValueError("MLP 모델이 아직 배포되지 않았습니다. `make train-mlp`를 실행하세요.")
+            profile = np.asarray(s.genre[indices].mean(axis=0), dtype=np.float32)
+            profiles = np.repeat(profile[None, :], len(s.movies), axis=0)
+            features = np.concatenate([profiles, s.genre, profiles * s.genre,
+                                       s.popularity[:, None]], axis=1)
+            raw = self.mlp_bundle["model"].predict(features)
+            raw = (raw - raw.min()) / (np.ptp(raw) + 1e-9)
+        elif model == "fusion":
             raw = 0.40 * score(s.graph) + 0.25 * score(s.sequence) + 0.35 * score(s.tower)
         else:
             raw = score(spaces[model])

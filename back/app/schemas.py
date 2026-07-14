@@ -1,7 +1,7 @@
 from typing import Literal
 from pydantic import BaseModel, Field
 
-ModelName = Literal["lightgcn", "sasrec", "two_tower", "fusion"]
+ModelName = Literal["lightgcn", "sasrec", "two_tower", "fusion", "mlp"]
 
 
 class RecommendRequest(BaseModel):

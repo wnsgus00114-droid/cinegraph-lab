@@ -15,8 +15,8 @@ def get_movies(query=""):
 
 with st.sidebar:
     st.header("추천 실험실")
-    model = st.selectbox("추천 엔진", ["fusion", "lightgcn", "sasrec", "two_tower"],
-        format_func=lambda x: {"fusion":"퓨전 (추천)", "lightgcn":"LightGCN 그래프", "sasrec":"SASRec 시퀀스", "two_tower":"Two-Tower 탐색"}[x])
+    model = st.selectbox("추천 엔진", ["fusion", "mlp", "lightgcn", "sasrec", "two_tower"],
+        format_func=lambda x: {"fusion":"퓨전 (추천)", "mlp":"MLP 학습 모델", "lightgcn":"LightGCN 그래프", "sasrec":"SASRec 시퀀스", "two_tower":"Two-Tower 탐색"}[x])
     top_k = st.slider("추천 결과 개수", 3, 15, 8)
     diversity = st.slider("다양성", 0.0, 1.0, 0.35, 0.05,
                           help="높일수록 서로 다른 장르의 영화를 보여줍니다.")

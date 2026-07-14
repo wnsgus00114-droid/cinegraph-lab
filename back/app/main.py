@@ -23,6 +23,7 @@ def load_engine():
 @app.get("/health")
 def health():
     return {"status": "healthy", "models": list(MODEL_DESCRIPTIONS),
+            "mlp_model_loaded": bool(engine and engine.mlp_loaded),
             "notification_mode": notifications.mode}
 
 

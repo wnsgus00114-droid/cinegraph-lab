@@ -13,7 +13,7 @@
 
 - 영화 검색 및 다중 선택을 통한 개인 선호 입력
 - Streamlit과 FastAPI 사이의 실제 HTTP/JSON 통신
-- LightGCN, SASRec, Two-Tower, Fusion 총 4개 추천 엔진 비교
+- LightGCN, SASRec, Two-Tower, Fusion, 실제 학습한 MLP 총 5개 추천 엔진 비교
 - 인기작 위주 편향을 줄이는 새로움(novelty) 조절
 - 비슷한 장르의 반복을 줄이는 MMR 다양성 재정렬
 - 장르 일치, 새로운 장르 발견, 숨은 작품 여부를 표시하는 추천 이유
@@ -45,7 +45,8 @@
           ├─ LightGCN 기반 그래프 탐색
           ├─ SASRec 기반 시퀀스 표현
           ├─ Two-Tower 협업·장르 탐색
-          └─ Fusion 앙상블
+          ├─ Fusion 앙상블
+          └─ MLP(64→32) 학습 모델
                     │
                     ▼
           새로움 점수 + MMR 다양성 재정렬
@@ -61,7 +62,7 @@
 ├─ front/                  # Streamlit 프론트엔드와 Dockerfile
 ├─ back/app/               # FastAPI, 추천 엔진, SNS 알림
 ├─ k8s/                   # Kubernetes 매니페스트
-├─ scripts/               # 데이터 다운로드와 EC2 배포
+├─ scripts/               # 데이터, MLP 학습, EC2 배포
 ├─ tests/                 # API 통합 테스트
 ├─ .github/workflows/     # GitHub Actions CI
 ├─ docker-compose.yml
@@ -80,7 +81,7 @@
 
 `scripts/download_data.sh`가 GroupLens 공식 주소에서 `movies.csv`와 `ratings.csv`를 재현 가능하게 다운로드합니다. 저장소 크기와 저작권·데이터 출처 관리를 위해 원본 CSV는 GitHub에 커밋하지 않습니다.
 
-## 추천 엔진 4종
+## 추천 엔진 5종
 
 | 엔진 | 활용 신호 | 특징 |
 |---|---|---|
@@ -88,8 +89,52 @@
 | SASRec | 선택 순서와 영화의 최근성 | 시퀀스에 민감한 탐색 |
 | Two-Tower | 협업 영화 표현과 장르 콘텐츠 표현 | 상호작용과 콘텐츠 정보 결합 |
 | Fusion | 위 세 신호의 가중 앙상블 | 새로움·MMR까지 결합한 기본 추천 엔진 |
+| MLP | 사용자 선호, 영화 장르, 선호×장르 교차 특징, 인기도 | 64→32 은닉층이 비선형 평점 관계를 학습 |
 
 사용자가 선택한 영화는 결과에서 제외됩니다. API는 입력 범위와 결과 개수를 검증하고, 응답 시간과 요청별 UUID를 함께 반환합니다. 사용자 이력이 없는 콜드 스타트 상황에서는 선택한 영화의 장르 표현을 활용합니다.
+
+## MLP 학습·배포 MLOps 흐름
+
+MLP는 실행 시 임의로 생성되는 모델이 아니라 MovieLens 평점을 학습한 배포 산출물입니다. 학습 컨테이너와 서빙 컨테이너를 분리했습니다.
+
+```text
+MovieLens 다운로드
+  → 학습 특징 생성
+  → Docker trainer에서 MLPRegressor(64, 32) 학습
+  → RMSE·MAE 평가
+  → artifacts/mlp_recommender.joblib 생성
+  → Docker API 이미지에 모델 포함
+  → FastAPI 시작 시 모델 로드
+  → Streamlit에서 MLP 엔진 선택
+```
+
+학습 재현:
+
+```bash
+make train-mlp
+cat artifacts/mlp_metrics.json
+```
+
+로컬 배포:
+
+```bash
+make deploy-mlp
+curl http://localhost:8000/health
+```
+
+`mlp_model_loaded` 값이 `true`면 학습한 모델이 정상 로드된 상태입니다. 모델 파일과 평가 JSON은 재생성 가능한 산출물이므로 Git에 추적하지 않습니다.
+
+영상에서 EC2로 배포할 때:
+
+```bash
+make train-mlp
+cat artifacts/mlp_metrics.json
+EC2_USER=ec2-user bash scripts/deploy_ec2.sh
+
+curl http://18.205.104.199:8000/health
+```
+
+마지막으로 Streamlit의 `MLP 학습 모델`을 선택해 추천 결과를 보여주면 학습–평가–패키징–배포–서빙의 전체 MLOps 흐름을 증명할 수 있습니다.
 
 ## 로컬 Docker 실행
 
