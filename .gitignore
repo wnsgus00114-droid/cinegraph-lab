@@ -1,0 +1,20 @@
+# Never publish private/course-only material
+*.pem
+*.key
+과제안내.md
+유튜브대본.md
+
+# Downloaded data and trained weights
+data/
+artifacts/*
+!artifacts/.gitkeep
+
+# Python / tools
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.env
+.DS_Store
+.coverage
+

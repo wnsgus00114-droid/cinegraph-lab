@@ -1,0 +1,14 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - run: bash scripts/download_data.sh
+      - run: pip install -r back/requirements.txt httpx pytest
+      - run: pytest -q
+      - run: docker compose config
+

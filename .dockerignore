@@ -1,0 +1,7 @@
+.git
+*.pem
+*.key
+과제안내.md
+유튜브대본.md
+.venv
+__pycache__
