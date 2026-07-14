@@ -246,24 +246,6 @@ make test
 - SNS 구독 API
 - SNS 메시지 발행 API
 - Docker Compose 구성 유효성
-
-## 저장소 보안
-
-다음 파일은 `.gitignore`로 Git 추적에서 제외합니다.
-
-- `*.pem`, `*.key`: AWS 비밀 키
-- `과제안내.md`: 개인 제출용 과제 문서
-- `유튜브대본.md`: 개인 촬영 대본
-- `data/`: 다운로드한 MovieLens 원본
-- `artifacts/`: 생성된 모델 산출물
-- `.env`: AWS 및 배포 환경 설정
-
-확인 명령:
-
-```bash
-git check-ignore -v *.pem '과제안내.md' '유튜브대본.md' data/movies.csv
-```
-
 ## 한계와 개선 방향
 
 - MovieLens 영화 제목과 장르는 원본 데이터에 따라 영문으로 표시됩니다.
@@ -279,6 +261,3 @@ git check-ignore -v *.pem '과제안내.md' '유튜브대본.md' data/movies.csv
 4. Carbonell, J. & Goldstein, J. (1998). [The Use of MMR, Diversity-Based Reranking for Reordering Documents and Producing Summaries](https://doi.org/10.1145/290941.291025), SIGIR.
 5. Harper, F. M. & Konstan, J. A. (2015). [The MovieLens Datasets: History and Context](https://doi.org/10.1145/2827872), ACM Transactions on Interactive Intelligent Systems.
 
-## 라이선스와 책임 있는 사용
-
-본 소스 코드는 교육용 프로젝트입니다. MovieLens 데이터셋은 GroupLens의 별도 이용 조건을 따릅니다. 추천 결과는 실험적 결과이며, 인기도와 과거 상호작용에 포함된 편향이 결과에 반영될 수 있습니다.
