@@ -9,6 +9,7 @@ CineGraph Lab is an end-to-end MLOps recommendation application. A user selects 
 - **Diversity-aware slate:** Maximal Marginal Relevance avoids ten nearly identical results.
 - **Explainability:** each result states genre affinity or cross-genre discovery and long-tail status.
 - **MLOps:** API health/readiness, Docker Compose, Kubernetes manifests, resource limits, GitHub Actions tests, request trace IDs, and reproducible public-data ingestion.
+- **Pub/Sub notifications:** Streamlit email subscription and recommendation publishing through an AWS SNS Topic, with a credential-free demo mode.
 
 > This is a compact educational implementation of the cited architectural ideas, optimized for CPU demo deployment. It does not claim to reproduce the papers' benchmark results or full training protocols.
 
@@ -70,6 +71,18 @@ ssh -i ./your-key.pem ec2-user@YOUR_PUBLIC_IP 'cd ~/cinegraph && sudo docker com
 ```
 
 For a long-lived public service, put TLS-capable Nginx/ALB in front, close port 8000 publicly, use an Elastic IP/domain, and store images in ECR.
+
+## AWS SNS email Pub/Sub
+
+Create a **Standard** SNS Topic in `us-east-1`, then give the EC2 instance role these least-privilege actions on that Topic: `sns:Subscribe` and `sns:Publish`. Configure its ARN before deployment:
+
+```bash
+export AWS_REGION=us-east-1
+export SNS_TOPIC_ARN=arn:aws:sns:us-east-1:YOUR_ACCOUNT_ID:cinegraph-recommendations
+docker compose up -d --build
+```
+
+The Streamlit sidebar submits an email endpoint to FastAPI, which calls SNS `Subscribe`. AWS sends a confirmation email; delivery starts only after the recipient selects **Confirm subscription**. The recommendation publish button sends one message to the Topic and SNS fans it out to every confirmed subscriber. If `SNS_TOPIC_ARN` is absent, the application clearly reports `demo` mode and sends no email. Never place AWS access keys in this repository or Docker image.
 
 ## Model behavior
 

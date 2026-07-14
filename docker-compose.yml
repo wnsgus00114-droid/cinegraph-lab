@@ -4,6 +4,9 @@ services:
       context: .
       dockerfile: back/Dockerfile
     ports: ["8000:8000"]
+    environment:
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      SNS_TOPIC_ARN: ${SNS_TOPIC_ARN:-}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health').raise_for_status()"]
@@ -21,4 +24,3 @@ services:
       api:
         condition: service_healthy
     restart: unless-stopped
-

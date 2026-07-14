@@ -14,4 +14,9 @@ def test_health_and_recommendation():
         response = client.post("/recommend", json={"liked_movie_ids": [1], "model": "fusion", "top_k": 3})
         assert response.status_code == 200
         assert len(response.json()["recommendations"]) == 3
-
+        subscription = client.post("/notifications/subscribe", json={"email": "demo@example.com"})
+        assert subscription.status_code == 200
+        assert subscription.json()["mode"] == "demo"
+        publication = client.post("/notifications/publish", json={"subject": "test", "message": "hello"})
+        assert publication.status_code == 200
+        assert publication.json()["status"] == "demo"

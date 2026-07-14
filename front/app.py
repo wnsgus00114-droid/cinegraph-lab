@@ -23,6 +23,24 @@ with st.sidebar:
     novelty = st.slider("새로움 · 숨은 작품 발견", 0.0, 1.0, 0.25, 0.05,
                         help="높일수록 인기작 외의 숨은 영화를 더 적극적으로 찾습니다.")
     st.info("화면에서 직접 계산하지 않고, 모든 추천을 FastAPI 백엔드가 처리합니다.")
+    with st.expander("🔔 새 추천 알림 구독", expanded=False):
+        st.write("AWS SNS Pub/Sub으로 새 영화 추천 소식을 이메일로 받아보세요.")
+        email = st.text_input("알림을 받을 이메일", placeholder="name@example.com")
+        if st.button("이메일 알림 구독", use_container_width=True):
+            if not email:
+                st.warning("이메일을 입력해 주세요.")
+            else:
+                try:
+                    response = requests.post(f"{API_URL}/notifications/subscribe",
+                                             json={"email": email}, timeout=15)
+                    response.raise_for_status()
+                    subscription = response.json()
+                    if subscription["mode"] == "aws_sns":
+                        st.success(subscription["message"])
+                    else:
+                        st.info(subscription["message"])
+                except requests.RequestException as exc:
+                    st.error(f"구독 요청에 실패했습니다: {exc}")
 
 query = st.text_input("영화 검색", placeholder="영문 제목으로 검색해 보세요: Toy Story, Matrix, Star Wars")
 try:
@@ -56,3 +74,17 @@ if st.button("🧠 맞춤 영화 추천받기", type="primary", use_container_wi
                 col2.subheader(movie["title"])
                 col2.write(movie["genres"])
                 col2.caption(f"{movie['reason']} · 관련도 {movie['score']:.3f}")
+        message_lines = ["씨네그래프 랩이 추천한 영화입니다.", ""]
+        message_lines += [f"{i}. {m['title']} - {m['reason']}" for i, m in enumerate(data["recommendations"][:5], 1)]
+        if st.button("📣 이 추천 목록을 구독자에게 알림으로 발행", use_container_width=True):
+            try:
+                response = requests.post(f"{API_URL}/notifications/publish",
+                    json={"subject": "씨네그래프 랩 새 영화 추천", "message": "\n".join(message_lines)}, timeout=15)
+                response.raise_for_status()
+                published = response.json()
+                if published["mode"] == "aws_sns":
+                    st.success(f"구독자에게 알림을 발행했습니다. 메시지 ID: {published['message_id']}")
+                else:
+                    st.info("데모 발행이 완료됐습니다. AWS SNS 설정 후 실제 이메일이 발송됩니다.")
+            except requests.RequestException as exc:
+                st.error(f"알림 발행에 실패했습니다: {exc}")

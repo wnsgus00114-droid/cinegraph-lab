@@ -11,6 +11,10 @@ spec:
         - name: api
           image: cinegraph-api:latest
           imagePullPolicy: IfNotPresent
+          env:
+            - {name: AWS_REGION, value: "us-east-1"}
+            - name: SNS_TOPIC_ARN
+              valueFrom: {secretKeyRef: {name: sns-config, key: topic-arn, optional: true}}
           ports: [{containerPort: 8000}]
           readinessProbe: {httpGet: {path: /health, port: 8000}, initialDelaySeconds: 10, periodSeconds: 5}
           resources:
@@ -23,4 +27,3 @@ metadata: {name: api, namespace: cinegraph}
 spec:
   selector: {app: api}
   ports: [{port: 8000, targetPort: 8000}]
-

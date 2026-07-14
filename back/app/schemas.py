@@ -27,3 +27,23 @@ class RecommendResponse(BaseModel):
     latency_ms: float
     api_trace_id: str
 
+
+class SubscribeRequest(BaseModel):
+    email: str = Field(pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$", max_length=254)
+
+
+class SubscribeResponse(BaseModel):
+    status: Literal["pending_confirmation", "demo"]
+    message: str
+    mode: Literal["aws_sns", "demo"]
+
+
+class PublishRequest(BaseModel):
+    subject: str = Field(default="씨네그래프 랩 새 영화 추천", min_length=1, max_length=100)
+    message: str = Field(min_length=1, max_length=5000)
+
+
+class PublishResponse(BaseModel):
+    status: Literal["published", "demo"]
+    message_id: str
+    mode: Literal["aws_sns", "demo"]
