@@ -6,9 +6,8 @@ up: data
 down:
 	docker compose down
 test:
-	pytest -q
+	PYTHONPATH=. python -m pytest -q
 k8s: data
 	docker build -f back/Dockerfile -t cinegraph-api:latest .
 	docker build -f front/Dockerfile -t cinegraph-front:latest .
 	kubectl apply -f k8s/namespace.yaml -f k8s/api.yaml -f k8s/frontend.yaml
-
